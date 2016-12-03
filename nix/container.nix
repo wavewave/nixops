@@ -27,6 +27,22 @@ in
       '';
     };
 
+    deployment.container.hostBridge = mkOption {
+      type = types.str;
+      default = "";
+      description = ''
+        The host network interface for bridged network.
+      '';
+    };
+
+    deployment.container.hostPort = mkOption {
+      type = types.str;
+      default = "";
+      description = ''
+        The host port for port forwarding.
+      '';
+    };
+
   };
 
   config = mkIf (config.deployment.targetEnv == "container") {

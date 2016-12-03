@@ -17,6 +17,8 @@ class ContainerDefinition(MachineDefinition):
         x = xml.find("attrs/attr[@name='container']/attrs")
         assert x is not None
         self.host = x.find("attr[@name='host']/string").get("value")
+        self.host_bridge = config["container"].get("hostBridge","")
+        self.host_port = config["container"].get("hostPort","")
 
 class ContainerState(MachineState):
     """State of a NixOS container."""
@@ -144,9 +146,15 @@ class ContainerState(MachineState):
             self.log("creating container...")
             self.host = defn.host
             self.copy_closure_to(path)
-            self.vm_id = self.host_ssh.run_command(
-                "nixos-container create {0} --ensure-unique-name --system-path '{1}'"
-                .format(self.name[:7], path), capture_stdout=True).rstrip()
+            create_command0 = "nixos-container create {0} --ensure-unique-name --system-path '{1}'".format(self.name[:7], path)
+            bridge_opt = ""
+            port_opt = ""
+            if defn.host_bridge:
+                bridge_opt = "--bridge " + defn.host_bridge
+            if defn.host_port:
+                port_opt = "--port " + defn.host_port
+            create_command = " ".join([create_command0,bridge_opt,port_opt]);
+            self.vm_id = self.host_ssh.run_command(create_command,capture_stdout=True).rstrip()
             self.state = self.STOPPED
 
         if self.state == self.STOPPED:
