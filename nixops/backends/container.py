@@ -18,7 +18,7 @@ class ContainerDefinition(MachineDefinition):
         assert x is not None
         self.host = x.find("attr[@name='host']/string").get("value")
         self.host_bridge = config["container"].get("hostBridge","")
-        self.host_port = config["container"].get("hostPort","")
+        self.forward_ports = config["container"].get("forwardPorts",[])
 
 class ContainerState(MachineState):
     """State of a NixOS container."""
@@ -151,8 +151,18 @@ class ContainerState(MachineState):
             port_opt = ""
             if defn.host_bridge:
                 bridge_opt = "--bridge " + defn.host_bridge
-            if defn.host_port:
-                port_opt = "--port " + defn.host_port
+            if defn.forward_ports:
+                port_opt = "--port \""
+                opts = []
+                for p in defn.forward_ports:
+                    cp = p.get("containerPort",None)
+                    if cp is None:
+                        opt = p["protocol"] + ":" + str(p["hostPort"])
+                    else:
+                        opt = p["protocol"] + ":" + str(p["hostPort"]) + ":" + str(cp)
+                    opts.append(opt) 
+                port_opt += ",".join(opts)
+                port_opt += "\""
             create_command = " ".join([create_command0,bridge_opt,port_opt]);
             self.vm_id = self.host_ssh.run_command(create_command,capture_stdout=True).rstrip()
             self.state = self.STOPPED

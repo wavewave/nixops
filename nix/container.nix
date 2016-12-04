@@ -35,14 +35,31 @@ in
       '';
     };
 
-    deployment.container.hostPort = mkOption {
-      type = types.str;
-      default = "";
+    deployment.container.forwardPorts = mkOption {
+      type = types.listOf (types.submodule {
+        options = {
+          protocol = mkOption {
+            type = types.str;
+            default = "tcp";
+            description = "The protocol specifier for port forwarding between host and container";
+          };
+          hostPort = mkOption {
+            type = types.int;
+            description = "Source port of the external interface on host";
+          };
+          containerPort = mkOption {
+            type = types.nullOr types.int;
+            default = null;
+            description = "Target port of container";
+          };
+        };
+      });
+      default = [];
+      example = [ { protocol = "tcp"; hostPort = 8080; containerPort = 80; } ];
       description = ''
-        The host port for port forwarding.
+        List of forwarded ports from host to container. Each forwarded port is specified by protocol, hostPort and containerPort. By default, protocol is tcp and hostPort and containerPort are assumed to be the same if containerPort is not explicitly given. 
       '';
     };
-
   };
 
   config = mkIf (config.deployment.targetEnv == "container") {
