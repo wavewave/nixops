@@ -19,6 +19,8 @@ class ContainerDefinition(MachineDefinition):
         self.host = x.find("attr[@name='host']/string").get("value")
         self.host_bridge = config["container"].get("hostBridge","")
         self.forward_ports = config["container"].get("forwardPorts",[])
+        self.bind_mounts = {k: v for k, v in config["container"]["bindMounts"].iteritems()}
+
 
 class ContainerState(MachineState):
     """State of a NixOS container."""
@@ -149,6 +151,7 @@ class ContainerState(MachineState):
             create_command0 = "nixos-container create {0} --ensure-unique-name --system-path '{1}'".format(self.name[:7], path)
             bridge_opt = ""
             port_opt = ""
+            extra_nspawn_opt = ""
             if defn.host_bridge:
                 bridge_opt = "--bridge " + defn.host_bridge
             if defn.forward_ports:
@@ -163,7 +166,21 @@ class ContainerState(MachineState):
                     opts.append(opt) 
                 port_opt += ",".join(opts)
                 port_opt += "\""
-            create_command = " ".join([create_command0,bridge_opt,port_opt]);
+
+            for k,v in defn.bind_mounts.items():
+                mountPoint = k
+                if v["isReadOnly"]:
+                    opt=" --bind-ro="
+                else:
+                    opt=" --bind="
+                hpath = v.get("hostPath")
+                if hpath is None:
+                    opt += mountPoint
+                else:
+                    opt += hpath + ":" + mountPoint
+                extra_nspawn_opt += opt
+            extra_nspawn_opt = "--extra-nspawn-flags \"" + extra_nspawn_opt + "\""        
+            create_command = " ".join([create_command0,bridge_opt,port_opt,extra_nspawn_opt]);
             self.vm_id = self.host_ssh.run_command(create_command,capture_stdout=True).rstrip()
             self.state = self.STOPPED
 
